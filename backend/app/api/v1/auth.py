@@ -19,7 +19,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 # Limitador sencillo en memoria (por proceso): 5 intentos fallidos por 15 min por correo+IP.
 _fails: dict[str, list[float]] = defaultdict(list)
-WINDOW, MAX_FAILS = 15 * 60, 5
+LOGIN_WINDOW, PIN_WINDOW, MAX_FAILS = 60, 15 * 60, 5  # el bloqueo de inicio de sesión dura 1 min; el del PIN 15 min (más sensible)
 
 
 def _throttle_key(request: Request, email: str) -> str:
@@ -33,9 +33,9 @@ def check_admin_pin(request: Request, pin: str) -> None:
         raise HTTPException(403, "El registro de administradores está deshabilitado")
     key = f"pin|{request.client.host if request.client else '-'}"
     now = time.time()
-    _fails[key] = [t for t in _fails[key] if now - t < WINDOW]
+    _fails[key] = [t for t in _fails[key] if now - t < PIN_WINDOW]
     if len(_fails[key]) >= MAX_FAILS:
-        raise HTTPException(429, "Demasiados intentos con el PIN. Intente de nuevo en unos minutos")
+        raise HTTPException(429, "Demasiados intentos con el PIN. Intente de nuevo en 15 minutos")
     if not hmac.compare_digest(pin.encode(), expected.encode()):
         _fails[key].append(now)
         raise HTTPException(403, "PIN de administrador incorrecto")
@@ -62,9 +62,9 @@ def register(data: RegisterIn, request: Request, db: Session = Depends(get_db)):
 def login(data: LoginIn, request: Request, db: Session = Depends(get_db)):
     key = _throttle_key(request, data.email)
     now = time.time()
-    _fails[key] = [t for t in _fails[key] if now - t < WINDOW]
+    _fails[key] = [t for t in _fails[key] if now - t < LOGIN_WINDOW]
     if len(_fails[key]) >= MAX_FAILS:
-        raise HTTPException(429, "Demasiados intentos fallidos. Intente de nuevo en unos minutos")
+        raise HTTPException(429, "Demasiados intentos fallidos. Intente de nuevo en 1 minuto")
     user = db.scalar(select(User).where(User.email == data.email.lower()))
     if not user or not user.is_active or user.is_demo or not verify_password(data.password, user.password_hash):
         _fails[key].append(now)
