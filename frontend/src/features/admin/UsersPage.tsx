@@ -8,8 +8,8 @@ import { fmtDate } from "../../lib/format";
 import { Badge, Button, DataTable, DemoBadge, Empty, ErrorBox, Field, Input, Loading, Modal, PageHeader, Select } from "../../components/ui";
 
 function CreateUser({ onClose }: { onClose: () => void }) {
-  const [f, setF] = useState({ name: "", email: "", password: "", role: "client" });
-  const m = useAction(() => api("/users", { body: f }), { invalidate: ["users"], success: "Usuario creado", onSuccess: onClose });
+  const [f, setF] = useState({ name: "", email: "", password: "", role: "client", admin_pin: "" });
+  const m = useAction(() => api("/users", { body: { ...f, admin_pin: f.role === "admin" ? f.admin_pin : undefined } }), { invalidate: ["users"], success: "Usuario creado", onSuccess: onClose });
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
   return (
     <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
@@ -17,6 +17,7 @@ function CreateUser({ onClose }: { onClose: () => void }) {
       <Field label="Correo"><Input type="email" required value={f.email} onChange={set("email")} /></Field>
       <Field label="Contraseña temporal" hint="Mínimo 8 caracteres, con letras y números. El usuario puede cambiarla luego."><Input type="password" required minLength={8} value={f.password} onChange={set("password")} autoComplete="new-password" /></Field>
       <Field label="Rol"><Select value={f.role} onChange={set("role")}><option value="client">Cliente</option><option value="admin">Administrador</option></Select></Field>
+      {f.role === "admin" && <Field label="PIN de administrador" hint="Obligatorio para añadir administradores"><Input type="password" inputMode="numeric" required autoComplete="off" value={f.admin_pin} onChange={set("admin_pin")} /></Field>}
       <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button><Button type="submit" loading={m.isPending}>Crear usuario</Button></div>
     </form>
   );
@@ -35,6 +36,19 @@ function Reset({ u, onClose }: { u: User; onClose: () => void }) {
   );
 }
 
+function Promote({ u, onClose }: { u: User; onClose: () => void }) {
+  const [pin, setPin] = useState("");
+  const m = useAction(() => api(`/users/${u.id}`, { method: "PATCH", body: { role: "admin", admin_pin: pin } }), { invalidate: ["users"], success: "Ahora es administrador", onSuccess: onClose });
+  return (
+    <Modal open onClose={onClose} title={`Hacer administrador a ${u.name}`}>
+      <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); m.mutate(); }}>
+        <Field label="PIN de administrador"><Input type="password" inputMode="numeric" required autoComplete="off" autoFocus value={pin} onChange={(e) => setPin(e.target.value)} /></Field>
+        <div className="flex justify-end gap-2"><Button type="button" variant="ghost" onClick={onClose}>Cancelar</Button><Button type="submit" loading={m.isPending}>Confirmar</Button></div>
+      </form>
+    </Modal>
+  );
+}
+
 export default function UsersPage() {
   const { user: me } = useAuth();
   const [q, setQ] = useState("");
@@ -42,6 +56,7 @@ export default function UsersPage() {
   const { data, isLoading, error } = useGet<User[]>("users", "/users", { q, role });
   const [creating, setCreating] = useState(false);
   const [reset, setReset] = useState<User | null>(null);
+  const [promote, setPromote] = useState<User | null>(null);
   const patch = useAction((v: { id: number; body: Partial<{ role: Role; is_active: boolean }> }) => api(`/users/${v.id}`, { method: "PATCH", body: v.body }), { invalidate: ["users"], success: "Usuario actualizado" });
   return (
     <>
@@ -60,7 +75,7 @@ export default function UsersPage() {
               <td><Badge tone={u.is_active ? "ok" : "bad"}>{u.is_active ? "Activo" : "Desactivado"}</Badge></td><td className="text-xs">{fmtDate(u.created_at)}</td>
               <td className="whitespace-nowrap text-right">
                 {!u.is_demo && <>
-                  <Button size="sm" variant="outline" disabled={u.id === me?.id} onClick={() => patch.mutate({ id: u.id, body: { role: u.role === "admin" ? "client" : "admin" } })}>{u.role === "admin" ? "Hacer cliente" : "Hacer admin"}</Button>{" "}
+                  <Button size="sm" variant="outline" disabled={u.id === me?.id} onClick={() => (u.role === "admin" ? patch.mutate({ id: u.id, body: { role: "client" } }) : setPromote(u))}>{u.role === "admin" ? "Hacer cliente" : "Hacer admin"}</Button>{" "}
                   <Button size="sm" variant="ghost" disabled={u.id === me?.id} onClick={() => patch.mutate({ id: u.id, body: { is_active: !u.is_active } })}>{u.is_active ? "Desactivar" : "Activar"}</Button>
                   <Button size="sm" variant="ghost" onClick={() => setReset(u)} aria-label="Restablecer contraseña" title="Restablecer contraseña"><KeyRound className="size-3.5" /></Button>
                 </>}
@@ -71,6 +86,7 @@ export default function UsersPage() {
       )}
       <Modal open={creating} onClose={() => setCreating(false)} title="Nuevo usuario"><CreateUser onClose={() => setCreating(false)} /></Modal>
       {reset && <Reset u={reset} onClose={() => setReset(null)} />}
+      {promote && <Promote u={promote} onClose={() => setPromote(null)} />}
     </>
   );
 }

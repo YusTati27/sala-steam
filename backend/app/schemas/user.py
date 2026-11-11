@@ -54,6 +54,7 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(max_length=200)
     role: Role = Role.client
+    admin_pin: str | None = Field(default=None, max_length=64)  # obligatorio si role = admin
 
     _pw = field_validator("password")(_check_pw)
 
@@ -62,6 +63,7 @@ class UserUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=120)
     role: Role | None = None
     is_active: bool | None = None
+    admin_pin: str | None = Field(default=None, max_length=64)  # obligatorio al promover a administrador
 
 
 class ResetPasswordIn(BaseModel):

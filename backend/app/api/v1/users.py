@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from app.api.v1.auth import check_admin_pin
 from app.core.db import get_db
 from app.core.deps import demo_flag, require_admin
 from app.core.security import hash_password
@@ -25,7 +26,9 @@ def list_users(q: str | None = None, role: Role | None = None, demo: bool = Depe
 
 
 @router.post("", response_model=UserOut, status_code=201)
-def create_user(data: UserCreate, db: Session = Depends(get_db)):
+def create_user(data: UserCreate, request: Request, db: Session = Depends(get_db)):
+    if data.role == Role.admin:
+        check_admin_pin(request, data.admin_pin or "")
     email = data.email.lower()
     if db.scalar(select(User.id).where(User.email == email)):
         raise HTTPException(409, "Ya existe una cuenta con ese correo")
@@ -43,8 +46,10 @@ def _get(db: Session, user_id: int) -> User:
 
 
 @router.patch("/{user_id}", response_model=UserOut)
-def update_user(user_id: int, data: UserUpdate, me: User = Depends(require_admin), db: Session = Depends(get_db)):
+def update_user(user_id: int, data: UserUpdate, request: Request, me: User = Depends(require_admin), db: Session = Depends(get_db)):
     u = _get(db, user_id)
+    if data.role == Role.admin and u.role != Role.admin.value:
+        check_admin_pin(request, data.admin_pin or "")
     if u.is_demo:
         raise HTTPException(409, "Los usuarios de demostración no se pueden modificar")
     if u.id == me.id and ((data.role and data.role != Role.admin) or data.is_active is False):

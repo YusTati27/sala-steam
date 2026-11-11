@@ -26,7 +26,7 @@ def _throttle_key(request: Request, email: str) -> str:
     return f"{email.lower()}|{request.client.host if request.client else '-'}"
 
 
-def _check_admin_pin(request: Request, pin: str) -> None:
+def check_admin_pin(request: Request, pin: str) -> None:
     """Valida el PIN de alta de administradores (tiempo constante y límite de intentos por IP)."""
     expected = get_settings().admin_signup_pin
     if not expected:
@@ -46,7 +46,7 @@ def register(data: RegisterIn, request: Request, db: Session = Depends(get_db)):
     email = data.email.lower()
     wants_admin = bool(data.admin_pin)
     if wants_admin:
-        _check_admin_pin(request, data.admin_pin)
+        check_admin_pin(request, data.admin_pin)
     if db.scalar(select(User.id).where(User.email == email)):
         raise HTTPException(409, "Ya existe una cuenta con ese correo")
     user = User(name=data.name.strip(), email=email, password_hash=hash_password(data.password),

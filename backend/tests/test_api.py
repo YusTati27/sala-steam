@@ -259,8 +259,14 @@ def test_maintenance_syncs_equipment(client, admin, printer):
 def test_user_management(client, admin):
     me = client.get(f"{API}/auth/me", headers=admin).json()
     assert client.patch(f"{API}/users/{me['id']}", headers=admin, json={"role": "client"}).status_code == 409
-    u = client.post(f"{API}/users", headers=admin, json={"name": "Nuevo Admin", "email": "nuevo@salasteam.dev", "password": "Clave12345", "role": "admin"})
+    u = client.post(f"{API}/users", headers=admin, json={"name": "Nuevo Admin", "email": "nuevo@salasteam.dev", "password": "Clave12345", "role": "admin", "admin_pin": "4242"})
     assert u.status_code == 201
+    # añadir o promover administradores exige el PIN
+    no_pin = {"name": "Sin Pin", "email": "sinpin@salasteam.dev", "password": "Clave12345", "role": "admin"}
+    assert client.post(f"{API}/users", headers=admin, json=no_pin).status_code == 403
+    cl = client.post(f"{API}/users", headers=admin, json={**no_pin, "role": "client"}).json()
+    assert client.patch(f"{API}/users/{cl['id']}", headers=admin, json={"role": "admin"}).status_code == 403
+    assert client.patch(f"{API}/users/{cl['id']}", headers=admin, json={"role": "admin", "admin_pin": "4242"}).json()["role"] == "admin"
     assert client.patch(f"{API}/users/{u.json()['id']}", headers=admin, json={"is_active": False}).json()["is_active"] is False
     assert client.post(f"{API}/auth/login", json={"email": "nuevo@salasteam.dev", "password": "Clave12345"}).status_code == 401
     assert all("password" not in k for k in u.json())
