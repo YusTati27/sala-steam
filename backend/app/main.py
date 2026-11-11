@@ -3,13 +3,15 @@ import contextlib
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import select
 
 from app.api.v1 import auth, equipment, filaments, jobs, maintenance, reservations, stats, system, users
-from app.core.config import get_settings
+from app.core.config import BACKEND_DIR, get_settings
 from app.core.db import Base, SessionLocal, engine
 from app.core.security import decode_token, hash_password
 from app.models import entities  # noqa: F401  (registra los modelos)
@@ -97,3 +99,18 @@ async def ws_endpoint(ws: WebSocket):
         pass
     finally:
         manager.disconnect(ws)
+
+
+# En producción un solo servicio entrega también la interfaz (frontend/dist, generada con `npm run build`).
+DIST = BACKEND_DIR.parent / "frontend" / "dist"
+if (DIST / "index.html").is_file():
+    app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
+
+    @app.get("/{path:path}", include_in_schema=False)
+    def spa(path: str):
+        if path.startswith(("api/", "ws")):
+            raise HTTPException(404)
+        target = (DIST / path).resolve()
+        if path and target.is_file() and DIST.resolve() in target.parents:
+            return FileResponse(target)
+        return FileResponse(DIST / "index.html")

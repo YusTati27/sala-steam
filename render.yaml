@@ -1,0 +1,18 @@
+# Blueprint de Render: crea un servicio web con Docker (interfaz + API).
+services:
+  - type: web
+    name: sala-steam
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: SIMULATOR_ENABLED
+        value: "true"
+      - key: BOOTSTRAP_ADMIN_EMAIL
+        sync: false   # lo escribes tú en el panel de Render
+      - key: BOOTSTRAP_ADMIN_PASSWORD
+        sync: false   # idem; nunca va en el repositorio
