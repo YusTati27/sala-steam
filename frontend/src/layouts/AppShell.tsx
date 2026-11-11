@@ -127,6 +127,9 @@ export default function AppShell() {
         <div className="truncate text-sm font-medium">{user.name}</div>
         <div className="truncate text-[11px] text-mute">{user.email}</div>
         <Badge tone={isAdmin ? "royal" : "cy"} className="mt-2">{isAdmin ? "Administrador" : "Cliente"}</Badge>
+        <button onClick={() => { setMenu(false); setPw(true); }} className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-line px-2 py-1.5 text-xs text-mute hover:border-cy/50 hover:text-fg">
+          <KeyRound className="size-3.5" /> Cambiar contraseña
+        </button>
       </div>
     </nav>
   );
