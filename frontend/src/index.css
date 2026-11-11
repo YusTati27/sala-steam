@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #07090d;
+  --color-panel: #0e1218;
+  --color-panel2: #141a22;
+  --color-line: #1f2833;
+  --color-fg: #e6edf5;
+  --color-mute: #8a97a8;
+  --color-cy: #22d3ee;
+  --color-royal: #2f6bff;
+  --color-ok: #34d399;
+  --color-warn: #fbbf24;
+  --color-bad: #f87171;
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --animate-fade-up: fade-up 0.35s ease-out both;
+  --animate-pulse-soft: pulse-soft 2s ease-in-out infinite;
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes pulse-soft {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+}
+
+html, body, #root { height: 100%; }
+body {
+  background: var(--color-ink);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(900px 400px at 85% -10%, rgba(47, 107, 255, 0.12), transparent 60%),
+    radial-gradient(700px 360px at 0% 0%, rgba(34, 211, 238, 0.07), transparent 60%);
+  background-attachment: fixed;
+}
+* { scrollbar-width: thin; scrollbar-color: #2a3544 transparent; }
+input, select, textarea { color-scheme: dark; }
+:focus-visible { outline: 2px solid var(--color-cy); outline-offset: 2px; }
+.recharts-text { fill: var(--color-mute); font-size: 11px; }
+.recharts-cartesian-grid line { stroke: #1b2430; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* Reporte imprimible */
+@media print {
+  @page { size: A4; margin: 12mm; }
+  html, body { background: #fff !important; color: #111 !important; height: auto; }
+  body { background-image: none !important; }
+  .no-print { display: none !important; }
+  .print-card { background: #fff !important; border: 1px solid #ccc !important; color: #111 !important; break-inside: avoid; }
+  .print-card * { color: #111 !important; }
+  .recharts-text { fill: #333 !important; }
+  .recharts-cartesian-grid line { stroke: #ddd !important; }
+  main { padding: 0 !important; }
+}
