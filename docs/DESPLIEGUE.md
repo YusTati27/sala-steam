@@ -12,3 +12,11 @@
 - Para datos persistentes: crear una base PostgreSQL en Render y poner su URL como `DATABASE_URL`
   (`postgresql+psycopg://...`). El código es portable pero **no se ha probado contra PostgreSQL**.
 - Cualquiera con el link puede registrarse como cliente y ver el simulador. El panel de administrador solo con las credenciales del paso 3.
+
+## Cuentas que no se pierden (base de datos permanente)
+En el plan gratuito de Render el disco es temporal: **cada redespliegue o reinicio (incluido el que ocurre al dormirse) borra las
+cuentas registradas**. Para evitarlo, usa una base PostgreSQL externa gratuita (por ejemplo Neon o Supabase):
+1. Crea el proyecto en el proveedor y copia la *connection string* (`postgresql://usuario:clave@host/base?sslmode=require`).
+2. En Render → Environment agrega `DATABASE_URL` con esa cadena (la app la adapta sola al driver `psycopg`).
+3. Guarda y redespliega. Las tablas se crean solas al iniciar.
+No se ha probado contra PostgreSQL; si algo falla, el error aparece en Logs.

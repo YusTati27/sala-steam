@@ -2,6 +2,7 @@ import secrets
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -30,6 +31,18 @@ class Settings(BaseSettings):
     bootstrap_admin_email: str = ""
     bootstrap_admin_password: str = ""
     bootstrap_admin_name: str = "Administrador"
+
+    @field_validator("database_url")
+    @classmethod
+    def _normalize_db_url(cls, v: str) -> str:
+        """Acepta URLs copiadas de proveedores (postgres://, postgresql://) y las adapta al driver psycopg."""
+        v = v.strip()
+        if not v:  # variable presente pero vacía (como en .env.example): usar SQLite local
+            return f"sqlite:///{(BACKEND_DIR / 'sala_steam.db').as_posix()}"
+        for prefix in ("postgres://", "postgresql://"):
+            if v.startswith(prefix):
+                return "postgresql+psycopg://" + v[len(prefix):]
+        return v
 
     @property
     def cors_list(self) -> list[str]:
