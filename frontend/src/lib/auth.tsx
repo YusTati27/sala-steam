@@ -7,7 +7,7 @@ interface AuthCtx {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
-  register: (name: string, email: string, password: string) => Promise<User>;
+  register: (name: string, email: string, password: string, adminPin?: string) => Promise<User>;
   logout: () => void;
 }
 const Ctx = createContext<AuthCtx | null>(null);
@@ -49,8 +49,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(r.user);
         return r.user;
       },
-      register: async (name, email, password) => {
-        const r = await api<TokenOut>("/auth/register", { body: { name, email, password } });
+      register: async (name, email, password, adminPin) => {
+        const r = await api<TokenOut>("/auth/register", { body: { name, email, password, admin_pin: adminPin || undefined } });
         setToken(r.access_token);
         qc.clear();
         setUser(r.user);

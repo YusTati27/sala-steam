@@ -9,6 +9,8 @@ export default function AuthPage() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [form, setForm] = useState({ name: "", email: "", password: "" });
+  const [asAdmin, setAsAdmin] = useState(false);
+  const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -19,7 +21,7 @@ export default function AuthPage() {
     setError("");
     setBusy(true);
     try {
-      const u = mode === "login" ? await login(form.email, form.password) : await register(form.name, form.email, form.password);
+      const u = mode === "login" ? await login(form.email, form.password) : await register(form.name, form.email, form.password, asAdmin ? pin : undefined);
       navigate(u.role === "admin" ? "/admin" : "/", { replace: true });
     } catch (err) {
       setError((err as Error).message);
@@ -60,11 +62,19 @@ export default function AuthPage() {
           <Field label="Contraseña" hint={mode === "register" ? "Mínimo 8 caracteres, con letras y números" : undefined}>
             <Input type="password" required value={form.password} onChange={set("password")} autoComplete={mode === "login" ? "current-password" : "new-password"} />
           </Field>
+          {mode === "register" && (
+            <div className="space-y-2 rounded-xl border border-line bg-panel2 p-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" checked={asAdmin} onChange={(e) => { setAsAdmin(e.target.checked); setPin(""); }} /> Registrarme como administrador
+              </label>
+              {asAdmin && <Field label="PIN de administrador"><Input type="password" inputMode="numeric" required autoComplete="off" value={pin} onChange={(e) => setPin(e.target.value)} /></Field>}
+            </div>
+          )}
           {error && <p role="alert" className="rounded-xl border border-bad/40 bg-bad/10 p-2.5 text-sm text-bad">{error}</p>}
           <Button type="submit" loading={busy} className="w-full">{mode === "login" ? "Entrar" : "Registrarme"}</Button>
           <p className="text-center text-sm text-mute">
             {mode === "login" ? "¿No tienes cuenta?" : "¿Ya tienes cuenta?"}{" "}
-            <button type="button" className="font-medium text-cy hover:underline" onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }}>
+            <button type="button" className="font-medium text-cy hover:underline" onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); setAsAdmin(false); setPin(""); }}>
               {mode === "login" ? "Regístrate" : "Inicia sesión"}
             </button>
           </p>

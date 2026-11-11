@@ -19,6 +19,9 @@ class Settings(BaseSettings):
 
     local_utc_offset_hours: int = -5  # zona horaria de la sala (para agrupar por día/hora)
 
+    # PIN para registrarse como administrador desde la pantalla de registro. Vacío = función deshabilitada.
+    admin_signup_pin: str = ""
+
     simulator_enabled: bool = True
     sim_tick_seconds: float = 3.0
     sim_speed: float = 20.0  # minutos simulados que avanzan por minuto real

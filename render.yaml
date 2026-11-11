@@ -12,6 +12,8 @@ services:
         generateValue: true
       - key: SIMULATOR_ENABLED
         value: "true"
+      - key: ADMIN_SIGNUP_PIN
+        sync: false   # PIN para crear administradores desde el registro
       - key: BOOTSTRAP_ADMIN_EMAIL
         sync: false   # lo escribes tú en el panel de Render
       - key: BOOTSTRAP_ADMIN_PASSWORD

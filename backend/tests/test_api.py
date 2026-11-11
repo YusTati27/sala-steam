@@ -29,6 +29,16 @@ def test_register_validation_and_duplicates(client, mode_real):
     assert client.post(f"{API}/auth/register", json={"name": "Dup User", "email": "DUP@salasteam.dev", "password": "Clave12345"}).status_code == 409
 
 
+def test_admin_signup_requires_pin(client, mode_real):
+    body = {"name": "Nueva Admin", "email": "nueva.admin@salasteam.dev", "password": "Clave12345"}
+    assert client.post(f"{API}/auth/register", json={**body, "admin_pin": "0000"}).status_code == 403
+    assert client.post(f"{API}/auth/register", json=body).json()["user"]["role"] == "client"  # sin PIN sigue siendo cliente
+    ok = client.post(f"{API}/auth/register", json={**body, "email": "otra.admin@salasteam.dev", "admin_pin": "4242"})
+    assert ok.status_code == 201 and ok.json()["user"]["role"] == "admin"
+    h = {"Authorization": f"Bearer {ok.json()['access_token']}"}
+    assert client.get(f"{API}/users", headers=h).status_code == 200
+
+
 def test_wrong_password_and_throttle(client, mode_real):
     for _ in range(5):
         assert client.post(f"{API}/auth/login", json={"email": "ghost@salasteam.dev", "password": "x"}).status_code == 401

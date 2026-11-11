@@ -21,6 +21,7 @@ class RegisterIn(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     email: EmailStr
     password: str = Field(max_length=200)
+    admin_pin: str | None = Field(default=None, max_length=64)  # si se envía, solicita rol de administrador
 
     _pw = field_validator("password")(_check_pw)
 

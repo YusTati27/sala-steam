@@ -7,6 +7,7 @@ os.environ.update(
     DATABASE_URL=f"sqlite:///{(_tmp / 'test.db').as_posix()}",
     JWT_SECRET_KEY="test-secret-key-only-for-tests-0123456789abcdef0123456789abcdef",
     SIMULATOR_ENABLED="false",
+    ADMIN_SIGNUP_PIN="4242",
     BOOTSTRAP_ADMIN_EMAIL="admin@salasteam.dev",
     BOOTSTRAP_ADMIN_PASSWORD="Admin12345",
     APP_ENV="development",

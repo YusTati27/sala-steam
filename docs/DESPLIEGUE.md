@@ -2,7 +2,7 @@
 
 1. Crea una cuenta en https://render.com (puedes entrar con GitHub).
 2. **New → Blueprint** y elige el repositorio `YusTati27/sala-steam`. Render lee `render.yaml`.
-3. Cuando lo pida, escribe `BOOTSTRAP_ADMIN_EMAIL` (tu correo) y `BOOTSTRAP_ADMIN_PASSWORD` (una contraseña nueva, mín. 8 con letras y números).
+3. Define también `ADMIN_SIGNUP_PIN`: con ese PIN cualquiera puede crearse como administrador desde el registro (casilla «Registrarme como administrador»). Cuando lo pida, escribe `BOOTSTRAP_ADMIN_EMAIL` (tu correo) y `BOOTSTRAP_ADMIN_PASSWORD` (una contraseña nueva, mín. 8 con letras y números).
 4. Espera el build (varios minutos). El link queda como `https://sala-steam-xxxx.onrender.com`.
 
 ## Qué esperar (plan gratuito)
