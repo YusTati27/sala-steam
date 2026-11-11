@@ -9,6 +9,15 @@ universitaria. Dos roles —**cliente** y **administrador**— sobre una misma b
 - **Base de datos:** SQLite en desarrollo (por defecto) · PostgreSQL en producción (`DATABASE_URL`)
 - **Tiempo real:** WebSocket (`/ws`) · **Autenticación:** JWT + contraseñas con Argon2
 
+## Inicio rápido (Windows)
+Doble clic en `iniciar.bat`: abre backend y frontend y el navegador en http://localhost:5173.
+Para crear un administrador con tu propia contraseña:
+```bash
+cd backend
+.venv\Scripts\python -m app.cli create-admin tu@correo.com "Tu Nombre"
+```
+(Si la cuenta ya existe, la convierte en administrador.) El registro público solo crea clientes.
+
 ## Puesta en marcha (desarrollo)
 Requisitos: Python 3.11+ y Node.js 20+.
 
@@ -49,7 +58,7 @@ cd frontend && npm run build                          # comprobación de tipos +
 `alembic upgrade head` (en `backend/`) aplica el esquema. En desarrollo, la app también crea las tablas al iniciar.
 
 ## Documentación
-- `docs/ARQUITECTURA.md` · `docs/ETAPAS.md` · `docs/INTEGRACION_HARDWARE.md`
+- `docs/GUIA_GRAFICAS.md` (por qué cada gráfica y su orden) · `docs/ARQUITECTURA.md` · `docs/ETAPAS.md` · `docs/INTEGRACION_HARDWARE.md`
 
 ## Seguridad
 Secretos solo en `.env` (ignorado por git); contraseñas con Argon2; permisos validados en el backend por rol;
