@@ -47,6 +47,8 @@ async def simulator_loop() -> None:
     s = get_settings()
     while True:
         await asyncio.sleep(s.sim_tick_seconds)
+        if not manager.connections:  # nadie mirando: no escribir en la base (ahorra cómputo en bases serverless)
+            continue
         try:
             events = await run_in_threadpool(_sim_step)
         except Exception:  # el simulador nunca debe tumbar la app
