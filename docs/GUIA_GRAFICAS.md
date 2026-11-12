@@ -117,6 +117,7 @@ Cada hallazgo incluye una **acción sugerida**. Son orientaciones, no verdades: 
   trabajos iniciados ese día; más color = más demanda. Arriba hay una **pestaña por mes** del período filtrado.
 - **Por qué calendario:** la demanda se entiende mejor ubicada en fechas reales (entregas, parciales, semanas de baja actividad)
   que en un promedio por día de la semana. La escala de color es la misma en todos los meses para poder compararlos.
+- **Agenda del día (estilo Google Calendar):** al hacer clic en una casilla se abre al lado la lista de trabajos de ese día, ordenados por hora, con una franja de color por estado (verde completado, rojo fallido, gris cancelado, azul en proceso, cian en cola). Al pulsar un trabajo se despliega usuario, material, duración, filamento y causa del fallo.
 - **Decisión que apoya:** horarios del personal y qué días ofrecer reservas. Las horas pico se resumen en el hallazgo «Pico de demanda».
 
 ### 5.10 Autonomía del inventario (tabla)

@@ -182,6 +182,10 @@ def test_historical_job_registration(client, admin, student, printer, pla):
         "estimated_minutes": 60, "status": "completed", "started_at": iso(start), "finished_at": iso(start + timedelta(minutes=65))})
     assert r.status_code == 201, r.text
     assert r.json()["duration_min"] == 65
+    # el filtro por día usa el día local de la sala (UTC-5): un trabajo a las 03:00 UTC cae en el día anterior
+    local_day = (start - timedelta(hours=5)).date().isoformat()
+    day = client.get(f"{API}/jobs", headers=admin, params={"date_from": local_day, "date_to": local_day, "limit": 200}).json()
+    assert any(j["id"] == r.json()["id"] for j in day["items"])
     bad = client.post(f"{API}/jobs", headers=admin, json={"user_id": uid, "project_name": "Mal", "status": "completed", "grams_estimated": 1, "estimated_minutes": 5})
     assert bad.status_code == 422
 

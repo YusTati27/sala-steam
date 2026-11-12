@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
-import { AlertOctagon, AlertTriangle, CheckCircle2, Download, Info, Printer as PrinterIcon } from "lucide-react";
+import { AlertOctagon, AlertTriangle, CheckCircle2, Download, Info, Printer as PrinterIcon, X } from "lucide-react";
 import {
   Bar, BarChart, CartesianGrid, Cell, ComposedChart, Legend, Line, Pie, PieChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import clsx from "clsx";
 import { download } from "../../lib/api";
 import { useGet } from "../../lib/hooks";
-import type { Equipment, Insight, Overview } from "../../lib/types";
-import { fmtDate, fmtDuration, fmtGrams, fmtNum, fmtPct, label, toInputDate } from "../../lib/format";
-import { Button, Card, CardTitle, DataTable, Empty, ErrorBox, Field, KpiCard, Loading, PageHeader, Select, Input, Tabs, DemoBadge } from "../../components/ui";
-import { matColor } from "../../components/shared";
+import type { Equipment, Insight, Job, Overview } from "../../lib/types";
+import { fmtDate, fmtDuration, fmtGrams, fmtNum, fmtPct, fmtTime, label, REASON_LABEL, toInputDate } from "../../lib/format";
+import { Button, Card, CardTitle, DataTable, Empty, ErrorBox, Field, KpiCard, Loading, PageHeader, Select, Input, Tabs, DemoBadge, StatusBadge } from "../../components/ui";
+import { matColor, Swatch } from "../../components/shared";
 import { useRealtime } from "../../lib/realtime";
 
 const C = { ok: "#34d399", bad: "#f87171", mute: "#4b5868", royal: "#2f6bff", cy: "#22d3ee", warn: "#fbbf24" };
@@ -62,6 +62,7 @@ export function InsightList({ items, limit }: { items: Insight[]; limit?: number
 
 const MONTH_NAMES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const DOW = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const DOW_LONG = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 const pad = (n: number) => String(n).padStart(2, "0");
 
 function monthsBetween(from: string, to: string) {
@@ -75,11 +76,70 @@ function monthsBetween(from: string, to: string) {
   return out;
 }
 
+/** Agenda de un día (estilo Google Calendar): trabajos ordenados por hora, con una franja de color por estado. */
+function DayAgenda({ day, onClose }: { day: string; onClose: () => void }) {
+  const { data, isLoading, error } = useGet<{ items: Job[]; total: number }>("jobs", "/jobs", { date_from: day, date_to: day, limit: 200 });
+  const [open, setOpen] = useState<number | null>(null);
+  const jobs = useMemo(
+    () => (data?.items ?? []).filter((j) => j.status !== "pending").sort((a, b) => +new Date(a.started_at ?? a.created_at) - +new Date(b.started_at ?? b.created_at)),
+    [data],
+  );
+  const [y, m, d] = day.split("-").map(Number);
+  const dow = DOW_LONG[new Date(y, m - 1, d).getDay()];
+  const done = jobs.filter((j) => j.status === "completed").length;
+  const bad = jobs.filter((j) => j.status === "failed").length;
+  return (
+    <div className="flex min-h-0 flex-col rounded-2xl border border-line bg-panel2/60 p-3 lg:max-h-[34rem]">
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div>
+          <div className="text-[11px] uppercase tracking-wide text-mute">{dow}</div>
+          <div className="text-lg font-semibold leading-tight">{d} de {MONTH_NAMES[m - 1].toLowerCase()}</div>
+          <div className="mt-0.5 text-[11px] text-mute">{jobs.length} trabajos · {done} completados{bad ? ` · ${bad} fallidos` : ""}</div>
+        </div>
+        <button onClick={onClose} aria-label="Cerrar agenda" className="no-print rounded-lg p-1 text-mute hover:bg-panel hover:text-fg"><X className="size-4" /></button>
+      </div>
+      <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto pr-0.5">
+        {isLoading && <p className="py-6 text-center text-xs text-mute">Cargando…</p>}
+        {error && <p className="py-6 text-center text-xs text-bad">{error.message}</p>}
+        {!isLoading && !error && jobs.length === 0 && <p className="py-8 text-center text-xs text-mute">No hubo trabajos este día.</p>}
+        {jobs.map((j) => {
+          const start = j.started_at ?? j.created_at;
+          const isOpen = open === j.id;
+          return (
+            <button key={j.id} onClick={() => setOpen(isOpen ? null : j.id)} className="block w-full rounded-lg bg-panel p-2 text-left transition hover:bg-panel/70" style={{ borderLeft: `4px solid ${STATUS_COLOR[j.status] ?? C.mute}` }}>
+              <div className="flex items-center justify-between gap-2 text-[11px] text-mute">
+                <span className="tabular-nums">{fmtTime(start)}{j.finished_at ? ` – ${fmtTime(j.finished_at)}` : " – en curso"}</span>
+                <StatusBadge status={j.status} />
+              </div>
+              <div className="mt-0.5 truncate text-sm font-medium">{j.project_name}</div>
+              <div className="flex items-center gap-1.5 truncate text-[11px] text-mute">
+                {j.color_hex && <Swatch hex={j.color_hex} size={10} />}{j.printer_name ?? "Sin impresora"}{j.material ? ` · ${j.material}` : ""}
+              </div>
+              {isOpen && (
+                <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-line pt-2 text-[11px]">
+                  <dt className="text-mute">Usuario</dt><dd className="truncate">{j.user_name ?? "—"}</dd>
+                  <dt className="text-mute">Material</dt><dd>{j.material ? `${j.material} ${j.color}` : "—"}</dd>
+                  <dt className="text-mute">Duración</dt><dd>{fmtDuration(j.duration_min ?? j.estimated_minutes)}{j.duration_min ? "" : " (est.)"}</dd>
+                  <dt className="text-mute">Filamento</dt><dd>{j.grams_used ? fmtGrams(j.grams_used) : `~${fmtGrams(j.grams_estimated)}`}</dd>
+                  {j.failure_reason && <><dt className="text-mute">Causa del fallo</dt><dd className="text-bad">{REASON_LABEL[j.failure_reason] ?? j.failure_reason}</dd></>}
+                  <dt className="text-mute">N.º de trabajo</dt><dd>#{j.id}</dd>
+                </dl>
+              )}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 /** Calendario mensual: columnas = día de la semana, filas = semana del mes; el color indica cuántos trabajos se iniciaron ese día. */
 function CalendarHeatmap({ data, from, to }: { data: Overview["demand_by_day"]; from: string; to: string }) {
   const months = useMemo(() => monthsBetween(from, to), [from, to]);
   const [sel, setSel] = useState("");
   const month = months.includes(sel) ? sel : months[months.length - 1];
+  const [selDay, setSelDay] = useState<string | null>(null);
+  const activeDay = selDay && selDay.startsWith(month) ? selDay : null; // al cambiar de mes se cierra la agenda
   const counts = useMemo(() => new Map(data.map((d) => [d.date, d.jobs])), [data]);
   const max = Math.max(1, ...data.map((d) => d.jobs)); // misma escala en todos los meses para poder compararlos
   const [y, m] = month.split("-").map(Number);
@@ -101,7 +161,8 @@ function CalendarHeatmap({ data, from, to }: { data: Overview["demand_by_day"]; 
           <b className="text-fg">{MONTH_NAMES[m - 1]} {y}</b> · {total} trabajos{busiest.n > 0 && <> · día más cargado: <b className="text-fg">{busiest.d}</b> ({busiest.n})</>}
         </div>
       </div>
-      <div className="mx-auto max-w-3xl">
+      <div className={clsx("grid gap-5", activeDay ? "lg:grid-cols-[minmax(0,1fr)_19rem]" : "")}>
+      <div className={clsx("min-w-0", !activeDay && "mx-auto w-full max-w-3xl")}>
         <div className="grid grid-cols-[4.2rem_repeat(7,minmax(0,1fr))] gap-1.5 text-center text-[11px]">
           <div />
           {DOW.map((d) => <div key={d} className="pb-1 font-medium text-mute">{d}</div>)}
@@ -116,12 +177,15 @@ function CalendarHeatmap({ data, from, to }: { data: Overview["demand_by_day"]; 
                 const outside = k < from || k > to || k > todayKey;
                 const ratio = n / max;
                 return (
-                  <div key={dow} title={`${DOW[dow]} ${day} de ${MONTH_NAMES[m - 1]}: ${n} trabajo(s)${outside ? " (fuera del período)" : ""}`}
-                    className="relative flex h-14 items-center justify-center rounded-lg border border-white/5 text-base font-semibold tabular-nums sm:h-16 sm:text-lg"
-                    style={{ background: n ? `rgba(34,211,238,${0.14 + 0.78 * ratio})` : "rgba(255,255,255,0.03)", color: ratio > 0.55 ? "#07090d" : n ? "#e6edf5" : "#4b5868", opacity: outside ? 0.35 : 1 }}>
+                  <button key={dow} type="button" onClick={() => setSelDay(activeDay === k ? null : k)} aria-pressed={activeDay === k}
+                    aria-label={`${DOW_LONG[dow]} ${day} de ${MONTH_NAMES[m - 1]}: ${n} trabajos. Ver detalle`}
+                    title={`${DOW[dow]} ${day} de ${MONTH_NAMES[m - 1]}: ${n} trabajo(s)${outside ? " (fuera del período)" : ""}`}
+                    className={clsx("relative flex h-14 items-center justify-center rounded-lg border text-base font-semibold tabular-nums transition hover:brightness-125 sm:h-16 sm:text-lg",
+                      activeDay === k ? "border-fg ring-2 ring-fg/70" : "border-white/5")}
+                    style={{ background: n ? `rgba(34,211,238,${0.14 + 0.78 * ratio})` : "rgba(255,255,255,0.03)", color: ratio > 0.55 ? "#07090d" : n ? "#e6edf5" : "#4b5868", opacity: outside && activeDay !== k ? 0.35 : 1 }}>
                     <span className="absolute left-1.5 top-1 text-[10px] font-normal opacity-70">{day}</span>
                     {n || ""}
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -132,6 +196,9 @@ function CalendarHeatmap({ data, from, to }: { data: Overview["demand_by_day"]; 
           <div className="h-2 w-40 rounded-full" style={{ background: "linear-gradient(90deg, rgba(34,211,238,0.14), rgba(34,211,238,0.92))" }} />
           <span>{max} trabajos/día</span>
         </div>
+        {!activeDay && <p className="no-print mt-2 text-center text-[11px] text-mute">Haz clic en un día para ver sus trabajos.</p>}
+      </div>
+      {activeDay && <DayAgenda key={activeDay} day={activeDay} onClose={() => setSelDay(null)} />}
       </div>
     </div>
   );

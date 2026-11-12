@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.core.db import get_db
 from app.core.deps import demo_flag, get_current_user, require_admin
 from app.core.timeutil import utcnow
@@ -41,10 +42,11 @@ def list_jobs(status: JobStatus | None = None, printer_id: int | None = None, us
         like = f"%{q.strip()}%"
         conds.append(or_(PrintJob.project_name.ilike(like), PrintJob.user.has(User.name.ilike(like))))
     t = func.coalesce(PrintJob.started_at, PrintJob.created_at)
+    off = timedelta(hours=get_settings().local_utc_offset_hours)  # las fechas del filtro son días locales de la sala
     if date_from:
-        conds.append(t >= datetime.combine(date_from, datetime.min.time()))
+        conds.append(t >= datetime.combine(date_from, datetime.min.time()) - off)
     if date_to:
-        conds.append(t < datetime.combine(date_to + timedelta(days=1), datetime.min.time()))
+        conds.append(t < datetime.combine(date_to + timedelta(days=1), datetime.min.time()) - off)
     total = db.scalar(select(func.count()).select_from(PrintJob).where(*conds)) or 0
     rows = svc.load_jobs(db, *conds, order=(func.coalesce(PrintJob.started_at, PrintJob.created_at).desc(), PrintJob.id.desc()),
                          limit=min(limit, 200), offset=offset)
