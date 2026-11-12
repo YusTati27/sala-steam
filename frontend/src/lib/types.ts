@@ -225,6 +225,7 @@ export interface Overview {
   colors: { color: string; hex: string; grams: number; jobs: number; share_pct: number }[];
   failure_reasons: { reason: string; label: string; count: number; pct: number }[];
   demand_heatmap: { weekday: number; hour: number; jobs: number }[];
+  demand_by_day: { date: string; jobs: number }[];
   stock_forecast: { material: string; available_g: number; daily_g: number; days_left: number | null }[];
   top_users: { name: string; jobs: number; grams: number }[];
   insights: Insight[];

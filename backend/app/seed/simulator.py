@@ -387,7 +387,7 @@ def tick(db: Session) -> list[str]:
             events.append(f"Inicia impresión: {started.project_name}")
     # Entra trabajo nuevo de vez en cuando para mantener viva la cola
     active = db.scalars(select(PrintJob.id).where(PrintJob.is_demo.is_(True), PrintJob.status.in_(["queued", "pending"]))).all()
-    if len(active) < 5 and rng.random() < 0.07:
+    if len(active) < 5 and rng.random() < 0.008:
         users = list(db.scalars(select(User).where(User.is_demo.is_(True))))
         ps = list(db.scalars(select(Equipment).where(Equipment.is_demo.is_(True), Equipment.type == "printer_3d",
                                                      Equipment.status.in_(["available", "busy"]))))

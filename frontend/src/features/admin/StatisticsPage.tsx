@@ -7,7 +7,7 @@ import clsx from "clsx";
 import { download } from "../../lib/api";
 import { useGet } from "../../lib/hooks";
 import type { Equipment, Insight, Overview } from "../../lib/types";
-import { fmtDate, fmtDuration, fmtGrams, fmtNum, fmtPct, label, toInputDate, WEEKDAYS } from "../../lib/format";
+import { fmtDate, fmtDuration, fmtGrams, fmtNum, fmtPct, label, toInputDate } from "../../lib/format";
 import { Button, Card, CardTitle, DataTable, Empty, ErrorBox, Field, KpiCard, Loading, PageHeader, Select, Input, Tabs, DemoBadge } from "../../components/ui";
 import { matColor } from "../../components/shared";
 import { useRealtime } from "../../lib/realtime";
@@ -60,32 +60,79 @@ export function InsightList({ items, limit }: { items: Insight[]; limit?: number
   );
 }
 
-function Heatmap({ data }: { data: Overview["demand_heatmap"] }) {
-  const hours = useMemo(() => {
-    const hs = data.map((d) => d.hour);
-    const lo = Math.max(0, Math.min(7, ...hs)), hi = Math.min(23, Math.max(19, ...hs));
-    return Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
-  }, [data]);
-  const map = new Map(data.map((d) => [`${d.weekday}-${d.hour}`, d.jobs]));
-  const max = Math.max(1, ...data.map((d) => d.jobs));
-  const dayTotals = WEEKDAYS.map((_, w) => data.filter((d) => d.weekday === w).reduce((s, d) => s + d.jobs, 0));
+const MONTH_NAMES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+const DOW = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const pad = (n: number) => String(n).padStart(2, "0");
+
+function monthsBetween(from: string, to: string) {
+  const out: string[] = [];
+  let [y, m] = from.slice(0, 7).split("-").map(Number);
+  const [ty, tm] = to.slice(0, 7).split("-").map(Number);
+  while (y < ty || (y === ty && m <= tm)) {
+    out.push(`${y}-${pad(m)}`);
+    if (++m > 12) { m = 1; y++; }
+  }
+  return out;
+}
+
+/** Calendario mensual: columnas = día de la semana, filas = semana del mes; el color indica cuántos trabajos se iniciaron ese día. */
+function CalendarHeatmap({ data, from, to }: { data: Overview["demand_by_day"]; from: string; to: string }) {
+  const months = useMemo(() => monthsBetween(from, to), [from, to]);
+  const [sel, setSel] = useState("");
+  const month = months.includes(sel) ? sel : months[months.length - 1];
+  const counts = useMemo(() => new Map(data.map((d) => [d.date, d.jobs])), [data]);
+  const max = Math.max(1, ...data.map((d) => d.jobs)); // misma escala en todos los meses para poder compararlos
+  const [y, m] = month.split("-").map(Number);
+  const days = new Date(y, m, 0).getDate();
+  const offset = new Date(y, m - 1, 1).getDay(); // 0 = domingo
+  const weeks = Math.ceil((offset + days) / 7);
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+  const key = (d: number) => `${month}-${pad(d)}`;
+  const monthDays = Array.from({ length: days }, (_, i) => ({ d: i + 1, n: counts.get(key(i + 1)) ?? 0 }));
+  const total = monthDays.reduce((s, x) => s + x.n, 0);
+  const busiest = monthDays.reduce((a, b) => (b.n > a.n ? b : a), { d: 0, n: 0 });
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[560px] border-separate border-spacing-1 text-center text-[11px]">
-        <thead><tr><th className="w-10" />{hours.map((h) => <th key={h} className="font-normal text-mute">{h}h</th>)}<th className="pl-1 text-right font-normal text-mute">Total</th></tr></thead>
-        <tbody>
-          {WEEKDAYS.map((d, w) => (
-            <tr key={d}>
-              <td className="pr-1 text-right text-mute">{d}</td>
-              {hours.map((h) => {
-                const n = map.get(`${w}-${h}`) ?? 0;
-                return <td key={h} title={`${d} ${h}:00 — ${n} trabajo(s)`} className="h-7 rounded-md tabular-nums" style={{ background: n ? `rgba(34,211,238,${0.12 + 0.78 * (n / max)})` : "rgba(255,255,255,0.03)", color: n / max > 0.55 ? "#07090d" : "#cbd5e1" }}>{n || ""}</td>;
+    <div>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <Tabs value={month} onChange={setSel} items={months.map((k) => ({ value: k, label: `${MONTH_NAMES[Number(k.slice(5)) - 1].slice(0, 3)} ${k.slice(2, 4)}` }))} />
+        <div className="text-xs text-mute">
+          <b className="text-fg">{MONTH_NAMES[m - 1]} {y}</b> · {total} trabajos{busiest.n > 0 && <> · día más cargado: <b className="text-fg">{busiest.d}</b> ({busiest.n})</>}
+        </div>
+      </div>
+      <div className="mx-auto max-w-3xl">
+        <div className="grid grid-cols-[4.2rem_repeat(7,minmax(0,1fr))] gap-1.5 text-center text-[11px]">
+          <div />
+          {DOW.map((d) => <div key={d} className="pb-1 font-medium text-mute">{d}</div>)}
+          {Array.from({ length: weeks }, (_, w) => (
+            <div key={w} className="contents">
+              <div className="flex items-center justify-end pr-2 text-mute">Semana {w + 1}</div>
+              {Array.from({ length: 7 }, (_, dow) => {
+                const day = w * 7 + dow - offset + 1;
+                if (day < 1 || day > days) return <div key={dow} className="h-14 sm:h-16" />;
+                const k = key(day);
+                const n = counts.get(k) ?? 0;
+                const outside = k < from || k > to || k > todayKey;
+                const ratio = n / max;
+                return (
+                  <div key={dow} title={`${DOW[dow]} ${day} de ${MONTH_NAMES[m - 1]}: ${n} trabajo(s)${outside ? " (fuera del período)" : ""}`}
+                    className="relative flex h-14 items-center justify-center rounded-lg border border-white/5 text-base font-semibold tabular-nums sm:h-16 sm:text-lg"
+                    style={{ background: n ? `rgba(34,211,238,${0.14 + 0.78 * ratio})` : "rgba(255,255,255,0.03)", color: ratio > 0.55 ? "#07090d" : n ? "#e6edf5" : "#4b5868", opacity: outside ? 0.35 : 1 }}>
+                    <span className="absolute left-1.5 top-1 text-[10px] font-normal opacity-70">{day}</span>
+                    {n || ""}
+                  </div>
+                );
               })}
-              <td className="pl-1 text-right tabular-nums text-mute">{dayTotals[w]}</td>
-            </tr>
+            </div>
           ))}
-        </tbody>
-      </table>
+        </div>
+        <div className="mt-3 flex items-center justify-center gap-2 text-[11px] text-mute">
+          <span>0</span>
+          <div className="h-2 w-40 rounded-full" style={{ background: "linear-gradient(90deg, rgba(34,211,238,0.14), rgba(34,211,238,0.92))" }} />
+          <span>{max} trabajos/día</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -325,8 +372,8 @@ export default function StatisticsPage() {
           </div>
 
           <Card>
-            <CardTitle hint="Cuántos trabajos se inician en cada día y hora (hora local). Úsalo para dimensionar el personal y abrir reservas en horas valle">Demanda por día y hora</CardTitle>
-            <Heatmap data={data.demand_heatmap} />
+            <CardTitle hint="Calendario del mes elegido: cada casilla es un día y su número, los trabajos iniciados. Más color = más demanda. Úsalo para dimensionar el personal y abrir reservas en días valle">Demanda por día (calendario)</CardTitle>
+            <CalendarHeatmap data={data.demand_by_day} from={data.period.from} to={data.period.to} />
           </Card>
 
           <div className="grid gap-5 xl:grid-cols-2">

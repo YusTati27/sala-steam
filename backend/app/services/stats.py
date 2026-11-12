@@ -230,6 +230,15 @@ def heatmap(jobs):
     return [{"weekday": w, "hour": h, "jobs": n} for (w, h), n in sorted(cnt.items())]
 
 
+def daily_demand(jobs):
+    """Trabajos iniciados por fecha local (para el calendario de demanda)."""
+    cnt = Counter()
+    for j in jobs:
+        if j.status != JobStatus.pending.value:
+            cnt[local(ref_time(j)).date().isoformat()] += 1
+    return [{"date": d, "jobs": n} for d, n in sorted(cnt.items())]
+
+
 def stock_forecast(db: Session, demo: bool) -> list[dict]:
     since = utcnow() - timedelta(days=60)
     jobs = list(db.scalars(
@@ -412,6 +421,7 @@ def overview(db: Session, demo: bool, dfrom: date, dto: date, printer_id=None, m
         "colors": color_stats(jobs),
         "failure_reasons": freasons,
         "demand_heatmap": heat,
+        "demand_by_day": daily_demand(jobs),
         "stock_forecast": forecast,
         "top_users": top_users,
         "insights": build_insights(kpi, prev, pstats, mstats, freasons, heat, forecast, cons, alerts, comparing_prev),

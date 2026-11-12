@@ -111,11 +111,13 @@ Cada hallazgo incluye una **acción sugerida**. Son orientaciones, no verdades: 
 - **Va después de material y color** porque son las primeras variables sospechosas de un fallo; aquí se ve la causa concreta.
 - **Decisión que apoya:** capacitación de usuarios, mantenimiento o cambio de perfiles de impresión. Solo es útil si el operador **registra la causa**.
 
-### 5.9 Demanda por día y hora (mapa de calor)
-- **Pregunta:** ¿cuándo se solicita más la sala?
-- Filas = día de la semana, columnas = hora local; el color más intenso indica más trabajos iniciados.
-- **Por qué mapa de calor:** hay dos dimensiones (día y hora) y un valor; es la forma más rápida de ver patrones.
-- **Decisión que apoya:** horarios del personal, y en qué franjas ofrecer reservas.
+### 5.9 Demanda por día (calendario)
+- **Pregunta:** ¿qué días del mes se solicita más la sala y cómo se reparte la carga por semanas?
+- Es un calendario del mes elegido: **columnas = día de la semana**, **filas = semana del mes**, y cada casilla muestra el número de
+  trabajos iniciados ese día; más color = más demanda. Arriba hay una **pestaña por mes** del período filtrado.
+- **Por qué calendario:** la demanda se entiende mejor ubicada en fechas reales (entregas, parciales, semanas de baja actividad)
+  que en un promedio por día de la semana. La escala de color es la misma en todos los meses para poder compararlos.
+- **Decisión que apoya:** horarios del personal y qué días ofrecer reservas. Las horas pico se resumen en el hallazgo «Pico de demanda».
 
 ### 5.10 Autonomía del inventario (tabla)
 - **Pregunta:** ¿cuántos días nos dura el material al ritmo actual?
